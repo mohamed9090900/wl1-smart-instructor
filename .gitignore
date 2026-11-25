@@ -1,0 +1,32 @@
+# Flutter and Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+coverage/
+
+# Native build and signing output
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+*.xcarchive/
+*.ipa
+*.mobileprovision
+*.p12
+*.keystore
+*.jks
+
+# Local models and reference material
+*.gguf
+*.pdf
+local_references/
+references/
+manuals/
+models/
+
+# Local configuration
+.env
+.env.*
+!.env.example
