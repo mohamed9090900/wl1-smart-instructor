@@ -222,7 +222,7 @@ $evidence
     try {
       await for(final part in engine!.create([
         LlamaChatMessage.fromText(role:LlamaChatRole.user,text:prompt),
-      ],params:const GenerationParams(maxTokens:320,))) {
+      ],params:const GenerationParams(maxTokens: 320, temp: 0.7, topK: 20, topP: 0.8), enableThinking: false)) {
         final chunk=part.choices.first.delta.content;
         if(chunk!=null && mounted){setState(()=>reply.text+=chunk);}
       }
