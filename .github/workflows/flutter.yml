@@ -25,7 +25,7 @@ jobs:
       - run: flutter test
 
   ios-compile:
-    name: iOS unsigned compile
+    name: iOS simulator compile
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -55,4 +55,4 @@ jobs:
           project.write_text(text)
           PYCODE
       - run: flutter pub get
-      - run: flutter build ios --no-codesign
+      - run: flutter build ios --simulator --no-codesign
