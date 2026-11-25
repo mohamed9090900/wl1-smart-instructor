@@ -33,7 +33,12 @@ jobs:
         with:
           channel: stable
           cache: true
-      - run: flutter create --platforms=ios .
+      - name: Generate iOS runner scaffold
+        run: |
+          scaffold="$(mktemp -d)"
+          flutter create --platforms=ios --project-name=wl1_smart_instructor --org=com.wl1 "$scaffold/app"
+          cp -R "$scaffold/app/ios" ./ios
+          rm -rf "$scaffold"
       - name: Set minimum iOS version to 16.4 for the local model plugin
         run: |
           python3 - <<'PYCODE'
