@@ -66,14 +66,7 @@ class LocalStore {
       _hash = data['hash']?.toString();
       modelFile = data['model']?.toString();
     }
-    if (refs.isEmpty) {
-      refs.add(Reference(id: 'demo', name: 'General Electricity — Demo Notes', category: 'General principles',
-        pages: [PageText(1, 'Electrical voltage is measured in volts (V). Electric current is measured in amperes (A). Resistance is measured in ohms.'),
-                PageText(2, 'Batteries and generators are sources of electrical power. An electrical bus distributes electrical power to loads.'),
-                PageText(3, 'A backup source may supply selected loads if the main source fails. The available duration depends on capacity, condition and connected loads.')],
-        active: true));
-      await save();
-    }
+
   }
 
   Future<void> save() async {
