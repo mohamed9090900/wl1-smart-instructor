@@ -1,0 +1,21 @@
+name: wl1_smart_instructor
+version: 0.4.0+1
+description: Offline source-grounded learning prototype for iPhone and desktop.
+publish_to: none
+environment:
+  sdk: '>=3.10.7 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  llamadart: ^0.8.18
+  llamadart_llama_cpp_flutter: ^0.0.12
+  file_selector: ^1.1.0
+  pdfrx: ^2.6.4
+  path_provider: ^2.1.6
+  cryptography: ^2.7.0
+  path: ^1.9.1
+flutter:
+  uses-material-design: true
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
