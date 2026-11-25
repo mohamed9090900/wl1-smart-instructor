@@ -50,32 +50,6 @@ class ChatMessage {
   final List<Hit> hits;
 }
 
-class QuizQuestion {
-  const QuizQuestion(this.text, this.options, this.correct, this.why);
-  final String text;
-  final List<String> options;
-  final int correct;
-  final String why;
-}
-
-const questions = [
-  QuizQuestion(
-    'What is the SI unit of electrical voltage?',
-    ['Ampere', 'Volt', 'Ohm'], 1,
-    'Voltage is measured in volts (V).',
-  ),
-  QuizQuestion(
-    'What is the general function of an electrical bus?',
-    ['Distribute electrical power', 'Store fuel', 'Measure temperature'], 0,
-    'An electrical bus distributes power to connected loads.',
-  ),
-  QuizQuestion(
-    'Does the loss of one power source always mean that all buses lose power?',
-    ['Yes, always', 'No, this depends on the system design'], 1,
-    'Redundant sources may continue supplying some buses.',
-  ),
-];
-
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key, required this.db});
   final LocalStore db;
@@ -83,7 +57,7 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
-  int page = -1; // Home by default. 0..3 are the agreed four sections.
+  int page = 0; // Open the instructor first. 0 = instructor, 1 = references.
   bool admin = false;
   LlamaEngine? engine;
   bool loadingModel = false;
@@ -92,11 +66,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   final chatInput = TextEditingController();
   final searchInput = TextEditingController();
   final messages = <ChatMessage>[];
-  Reference? studying;
-  int quizIndex = 0;
-  int? quizChoice;
-  bool quizRevealed = false;
-  int quizScore = 0;
 
   LocalStore get db => widget.db;
 
@@ -120,7 +89,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text),behavior: SnackBarBehavior.floating));
   }
-  void goto(int index) { setState(() {page=index; if(index != 0) studying=null;}); }
+  void goto(int index) { setState(() => page=index); }
 
   Future<String?> inputDialog(String title, {bool secret=false, String hint=''}) async {
     final c = TextEditingController();
@@ -148,9 +117,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   }
   Future<void> changePassword() async {
     if (!await unlock()) return;
-    final old = await inputDialog('أدخل الباسورد الحالي', secret:true);
-    if (old == null) return;
-    if (!await db.checkPassword(old)) {notice('الباسورد الحالي غير صحيح'); return;}
     final value = await inputDialog('الباسورد الجديد', secret:true,hint:'٨ أحرف على الأقل');
     if (value == null) return;
     try {await db.setPassword(value);notice('تم تغيير باسورد الجهاز');}
@@ -267,23 +233,21 @@ $evidence
 
   @override Widget build(BuildContext context) {
     return Directionality(textDirection:TextDirection.rtl,child:Scaffold(
-      appBar:AppBar(title: InkWell(onTap:()=>goto(-1),child:const Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      appBar:AppBar(title:const Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         Text('WL-1',style:TextStyle(fontWeight:FontWeight.w800,fontSize:20)),
         Text('SMART INSTRUCTOR',style:TextStyle(fontSize:9,letterSpacing:1.8,color:muted)),
-      ])),actions:[IconButton(icon:const Icon(Icons.home_outlined),onPressed:()=>goto(-1),tooltip:'الرئيسية'),const SizedBox(width:8)]),
+      ])),
       body:SafeArea(child:AnimatedSwitcher(duration:const Duration(milliseconds:140),child:KeyedSubtree(
-        key:ValueKey(page),child:[_study(),_ask(),_quiz(),_refs()].elementAtOrNull(page) ?? _home(),
+        key:ValueKey(page),child:[_ask(),_refs()].elementAtOrNull(page) ?? _ask(),
       ))),
       bottomNavigationBar:NavigationBar(
-        height:73, selectedIndex:page<0?0:page,
+        height:73, selectedIndex:page,
         backgroundColor:const Color(0xFFF5F8F9),
         indicatorColor:const Color(0xFFDDE9EF),
         onDestinationSelected:goto,
         labelBehavior:NavigationDestinationLabelBehavior.alwaysShow,
         destinations:const [
-          NavigationDestination(icon:Icon(Icons.menu_book_outlined),selectedIcon:Icon(Icons.menu_book),label:'الدراسة'),
           NavigationDestination(icon:Icon(Icons.chat_bubble_outline),selectedIcon:Icon(Icons.chat_bubble),label:'المدرس'),
-          NavigationDestination(icon:Icon(Icons.fact_check_outlined),selectedIcon:Icon(Icons.fact_check),label:'الاختبار'),
           NavigationDestination(icon:Icon(Icons.folder_outlined),selectedIcon:Icon(Icons.folder),label:'المراجع'),
         ],
       ),
@@ -294,34 +258,6 @@ $evidence
   Widget title(String name,{String? sub}) => Padding(padding:const EdgeInsets.only(top:6,bottom:18),child:
     Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(name,style:const TextStyle(color:ink,fontSize:23,fontWeight:FontWeight.w700)),
       if(sub!=null)Padding(padding:const EdgeInsets.only(top:5),child:Text(sub,style:const TextStyle(color:muted,fontSize:13)))]));
-  Widget tileCard({required String text,required IconData icon,required VoidCallback onTap,String? detail}) =>
-    Card(margin:const EdgeInsets.only(bottom:11),child:InkWell(borderRadius:BorderRadius.circular(17),onTap:onTap,child:
-      Padding(padding:const EdgeInsets.all(18),child:Row(children:[
-        Container(width:44,height:44,decoration:BoxDecoration(color:const Color(0xFFE7F0F3),borderRadius:BorderRadius.circular(13)),
-          child:Icon(icon,color:accent)),const SizedBox(width:13),
-        Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(text,style:const TextStyle(color:ink,fontWeight:FontWeight.w700,fontSize:15)),
-          if(detail!=null)Padding(padding:const EdgeInsets.only(top:4),child:Text(detail,style:const TextStyle(color:muted,fontSize:12)))])),
-        const Icon(Icons.chevron_left,color:muted)
-      ]))));
-  Widget _home() => SingleChildScrollView(child:wrapPage(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-    title('هتذاكر إيه النهارده؟',sub:'مدرس محلي من غير حسابات'),
-    tileCard(text:'ابدأ الدراسة',detail:'دروس من مكتبة المراجع',icon:Icons.menu_book_outlined,onTap:()=>goto(0)),
-    tileCard(text:'اسأل المدرس',detail:'اسأل وخد الإجابة مع المصدر',icon:Icons.chat_bubble_outline,onTap:()=>goto(1)),
-    tileCard(text:'اختبر نفسك',detail:'أسئلة وتصحيح داخل الجلسة',icon:Icons.fact_check_outlined,onTap:()=>goto(2)),
-    tileCard(text:'مكتبة المراجع',detail:'أضف ملفات باستخدام باسورد المسؤول',icon:Icons.folder_outlined,onTap:()=>goto(3)),
-    const SizedBox(height:10), const Row(children:[Icon(Icons.wifi_off_outlined,size:17,color:muted),SizedBox(width:7),
-      Text('كل بياناتك على الجهاز',style:TextStyle(color:muted,fontSize:12))])
-  ])));
-  Widget _study() => SingleChildScrollView(child:wrapPage(Column(
-    crossAxisAlignment:CrossAxisAlignment.start,children:[
-    title('ابدأ الدراسة',sub:'الكتب بصفحاتها ولغتها الأصلية، بدون ترجمة'),
-    for(final ref in db.refs.where((r)=>r.active))
-      tileCard(text:ref.name, detail:ref.pdfFile == null
-        ? 'Original source text' : 'Original PDF · ${ref.pages.length} indexed pages',
-        icon:Icons.menu_book_outlined, onTap:()=>showRef(ref,1)),
-    if(db.refs.where((r)=>r.active).isEmpty)
-      const Text('أضف كتابًا من مكتبة المراجع علشان تبدأ الدراسة.'),
-  ])));
   Widget _ask()=>Column(children:[
     Padding(padding:const EdgeInsets.symmetric(horizontal:16,vertical:6),child:Row(children:[
       Expanded(child:Text(engineStatus,style:const TextStyle(color:muted,fontSize:12))),
@@ -349,47 +285,6 @@ $evidence
         const Icon(Icons.send_rounded)),
     ])),
   ]);
-  Widget _quiz() => Directionality(
-    textDirection: TextDirection.ltr,
-    child: SingleChildScrollView(child:wrapPage(Column(
-      crossAxisAlignment:CrossAxisAlignment.start,children:[
-      title('Knowledge Check',sub:'English only · Demo questions on general electrical principles'),
-      if(quizIndex>=questions.length)
-        Card(child:Padding(padding:const EdgeInsets.all(25),child:Column(children:[
-          Text('$quizScore / ${questions.length}',style:const TextStyle(fontSize:36,fontWeight:FontWeight.w800,color:accent)),
-          const Text('Quiz completed'),const SizedBox(height:20),
-          FilledButton(onPressed:()=>setState((){
-            quizIndex=0;quizChoice=null;quizRevealed=false;quizScore=0;
-          }),child:const Text('Try Again'))
-        ]))) else ...[
-          Text('Question ${quizIndex+1} of ${questions.length}',style:const TextStyle(color:muted)),
-          const SizedBox(height:8),
-          Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(
-            crossAxisAlignment:CrossAxisAlignment.start,children:[
-            Text(questions[quizIndex].text,style:const TextStyle(fontSize:17,fontWeight:FontWeight.w700)),
-            const SizedBox(height:16),
-            for(var i=0;i<questions[quizIndex].options.length;i++)
-              RadioListTile<int>(value:i,groupValue:quizChoice,
-                onChanged:quizRevealed?null:(x)=>setState(()=>quizChoice=x),
-                title:Text(questions[quizIndex].options[i])),
-            if(quizRevealed)...[
-              const Divider(),
-              Text(quizChoice==questions[quizIndex].correct ? 'Correct answer' : 'Incorrect answer',
-                style:const TextStyle(fontWeight:FontWeight.bold,color:accent)),
-              Text(questions[quizIndex].why,style:const TextStyle(color:accent)),
-            ],
-            const SizedBox(height:12),
-            FilledButton(onPressed:quizChoice==null?null:()=>setState((){
-              if(!quizRevealed){
-                quizRevealed=true;
-                if(quizChoice==questions[quizIndex].correct)quizScore++;
-              }else{quizIndex++;quizChoice=null;quizRevealed=false;}
-            }),child:Text(quizRevealed?'Next Question':'Check Answer')),
-          ])))
-        ]
-    ))));
-
-
   Widget _refs() => SingleChildScrollView(child:wrapPage(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
     title('مكتبة المراجع',sub:'مراجع الجهاز فقط'),
     Row(children:[Expanded(child:OutlinedButton.icon(onPressed:addReference,icon:const Icon(Icons.add),label:const Text('إضافة مرجع'))),
