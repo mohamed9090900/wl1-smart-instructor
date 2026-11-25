@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#e9eef1">
+  <title>WL-1 Smart Instructor · Preview</title>
+  <style>
+    :root{color-scheme:light;--bg:#e9eef1;--paper:#f9fbfc;--line:#d2dfe5;--ink:#243746;--mute:#667784;--blue:#41677c}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,Arial,sans-serif}
+    button,input{font:inherit}button{cursor:pointer}header{background:#eef3f5;border-bottom:1px solid var(--line);padding:15px 18px;display:flex;align-items:center;justify-content:space-between}
+    header strong{font-size:20px;letter-spacing:.5px}header small{display:block;color:var(--mute);font-size:10px;margin-top:3px}header .tag{font-size:10px;color:#497d78;background:#deeee9;border-radius:30px;padding:6px 9px}
+    main{max-width:680px;margin:0 auto;padding:18px 14px 94px}.view{display:none}.view.active{display:block}.heading{font-size:22px;font-weight:750;margin:5px 0 8px}.sub{color:var(--mute);font-size:13px;line-height:1.7;margin:0 0 14px}
+    .panel{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0}.notice{font-size:12px;color:var(--mute);line-height:1.7}.row{display:flex;gap:8px;align-items:center}.row>*{min-width:0}.grow{flex:1}
+    .button{background:#41677c;color:white;border:0;padding:11px 14px;border-radius:11px;font-size:14px}.button.secondary{background:#dde8ed;color:#25485a}.button.danger{background:#a84a4a}.button:disabled{opacity:.45}
+    .field{border:1px solid #cbd8de;background:white;border-radius:11px;padding:12px;width:100%;color:var(--ink);min-width:0}.chat{height:58vh;min-height:280px;overflow:auto;padding:9px;background:#eff4f6;border:1px solid var(--line);border-radius:14px}
+    .msg{max-width:94%;padding:12px;border-radius:13px;background:white;margin:9px 0;line-height:1.75;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}.msg.mine{background:#d5e7ef;margin-right:auto}.ref-name{font-weight:700;overflow-wrap:anywhere}.ref-meta{font-size:12px;color:var(--mute);margin:5px 0 11px}.book{width:100%;height:58vh;border:1px solid var(--line);border-radius:11px;background:white}.hidden{display:none!important}
+    nav{position:fixed;bottom:0;left:0;right:0;display:grid;grid-template-columns:repeat(2,1fr);background:#f5f8f9;border-top:1px solid var(--line);padding:7px 5px calc(9px + env(safe-area-inset-bottom));gap:5px}nav button{background:transparent;border:0;border-radius:11px;color:#6f8790;padding:8px 4px;display:flex;gap:4px;align-items:center;flex-direction:column;font-size:11px}nav button.active{background:#dae8ee;color:#2c566b}nav button span{font-size:18px}button:focus-visible,input:focus-visible{outline:2px solid #477b8a;outline-offset:2px}
+  </style>
+</head>
+<body>
+  <header><div><strong>WL-1</strong><small>SMART INSTRUCTOR</small></div><span class="tag">معاينة واجهة</span></header>
+  <main>
+    <section id="teacher" class="view active">
+      <h1 class="heading">المدرس الذكي</h1>
+      <p class="sub">المحادثة هي الشاشة الرئيسية. هذه المعاينة لا تشغّل نموذج الذكاء المحلي.</p>
+      <div class="chat" id="chat" aria-live="polite"><div class="msg">اسألني بالراحة، وهنفهمها سوا. في التطبيق، هشرح من المراجع المحلية وأعرض اسم المرجع ورقم الصفحة.</div></div>
+      <div class="row" style="margin-top:10px"><input class="field grow" id="askInput" placeholder="اسأل المدرس..." aria-label="سؤال للمدرس"><button class="button" id="askSend">إرسال</button></div>
+    </section>
+    <section id="refs" class="view">
+      <h1 class="heading">المراجع</h1>
+      <p class="sub">المراجع التي تضيفها هنا لا تخرج من المتصفح، لكنها لا تُحفظ بعد إغلاق المعاينة.</p>
+      <div class="row"><button id="unlock" class="button secondary grow">إدارة المراجع</button><button id="import" class="button grow" disabled>إضافة PDF</button><input class="hidden" type="file" id="pdfPicker" accept=".pdf,application/pdf"></div>
+      <p class="notice" id="adminStatus">وضع الاستخدام · إدارة المراجع مقفولة</p>
+      <div id="referenceViewer" class="hidden">
+        <div class="row"><button class="button secondary" id="backRefs">رجوع للمراجع</button><span id="bookTitle" class="ref-name grow"></span></div>
+        <iframe class="book" id="bookFrame" title="Original PDF" style="margin-top:10px"></iframe>
+      </div>
+      <div id="refsList"></div>
+      <div id="adminActions" class="hidden"><button class="button secondary" id="changePass">تغيير الباسورد</button><button class="button secondary" id="lockAdmin">قفل المسؤول</button></div>
+    </section>
+  </main>
+  <nav aria-label="التنقل الرئيسي"><button class="active" data-target="teacher"><span>◉</span>المدرس</button><button data-target="refs"><span>▣</span>المراجع</button></nav>
+  <script>
+    (()=>{'use strict';
+      const pages=[...document.querySelectorAll('.view')],$=id=>document.getElementById(id);
+      let active='teacher',admin=false,pass=null,books=[];
+      function go(id){active=id;pages.forEach(p=>p.classList.toggle('active',p.id===id));document.querySelectorAll('nav [data-target]').forEach(b=>b.classList.toggle('active',b.dataset.target===id));if(id==='refs')renderRefs()}
+      document.querySelectorAll('nav [data-target]').forEach(b=>b.onclick=()=>go(b.dataset.target));
+      function addMessage(body,mine=false){const el=document.createElement('div');el.className='msg'+(mine?' mine':'');el.textContent=body;$('chat').append(el);el.scrollIntoView({block:'nearest'})}
+      function send(){const q=$('askInput').value.trim();if(!q)return;addMessage(q,true);$('askInput').value='';addMessage('دي معاينة للواجهة فقط. في التطبيق المثبت، يجاوب نموذج محلي من المرجع، أو يوضح إن النص المتاح لا يكفي.')}
+      $('askSend').onclick=send;$('askInput').onkeydown=e=>{if(e.key==='Enter')send()};
+      function renderRefs(){const host=$('refsList');host.replaceChildren();if($('referenceViewer').classList.contains('hidden')){$('refsList').classList.remove('hidden')}else{$('refsList').classList.add('hidden')}
+        for(const book of books){const row=document.createElement('div');row.className='panel';const name=document.createElement('div');name.className='ref-name';name.textContent=book.name;row.append(name);const meta=document.createElement('p');meta.className='ref-meta';meta.textContent=(book.active?'نشط':'موقوف')+' · PDF محلي في جلسة المعاينة';row.append(meta);
+          const actions=document.createElement('div');actions.className='row';const view=document.createElement('button');view.className='button secondary';view.textContent='عرض';view.onclick=()=>showBook(book);actions.append(view);
+          if(admin){const toggle=document.createElement('button');toggle.className='button secondary';toggle.textContent=book.active?'إيقاف':'تفعيل';toggle.onclick=()=>{book.active=!book.active;renderRefs()};actions.append(toggle);const del=document.createElement('button');del.className='button danger';del.textContent='حذف';del.onclick=()=>{URL.revokeObjectURL(book.url);books=books.filter(item=>item!==book);renderRefs()};actions.append(del)}row.append(actions);host.append(row)}
+        if(!books.length){const empty=document.createElement('p');empty.className='notice';empty.textContent='لم تضف ملفات للمعاينة بعد.';host.append(empty)}
+      }
+      function showBook(book){$('bookTitle').textContent=book.name;$('bookFrame').src=book.url;$('referenceViewer').classList.remove('hidden');renderRefs()}
+      $('backRefs').onclick=()=>{$('bookFrame').src='about:blank';$('referenceViewer').classList.add('hidden');renderRefs()};
+      $('unlock').onclick=()=>{if(admin)return;let value;if(pass===null){value=prompt('اختار باسوردًا للمعاينة (٨ أحرف على الأقل)');if(!value)return;if(value.length<8){alert('الباسورد لازم يكون ٨ أحرف على الأقل');return}pass=value}else{value=prompt('باسورد المسؤول');if(value!==pass){alert('الباسورد غير صحيح');return}}admin=true;$('import').disabled=false;$('adminActions').classList.remove('hidden');$('adminStatus').textContent='وضع المسؤول مفتوح لهذه الجلسة فقط';renderRefs()};
+      $('changePass').onclick=()=>{if(!admin)return;const value=prompt('الباسورد الجديد (٨ أحرف على الأقل)');if(!value||value.length<8){alert('الباسورد لازم يكون ٨ أحرف على الأقل');return}pass=value;alert('تم تغيير باسورد المعاينة لهذه الجلسة')};
+      $('lockAdmin').onclick=()=>{admin=false;$('import').disabled=true;$('adminActions').classList.add('hidden');$('adminStatus').textContent='وضع الاستخدام · إدارة المراجع مقفولة';renderRefs()};
+      $('import').onclick=()=>$('pdfPicker').click();$('pdfPicker').onchange=e=>{const file=e.target.files?.[0];if(!file)return;if(!admin)return;if(file.type!=='application/pdf'&&!file.name.toLowerCase().endsWith('.pdf')){alert('اختر ملف PDF');return}books.push({name:file.name,url:URL.createObjectURL(file),active:true});renderRefs();e.target.value=''};
+      renderRefs();
+    })();
+  </script>
+</body>
+</html>
